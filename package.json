@@ -1,7 +1,6 @@
 {
   "name": "gjnet-next-capella",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "couchbase": "^4.4.0",

@@ -1,20 +1,16 @@
-import React, { useState } from 'react';
+import { useRouter } from 'next/router'
 
 export default function Home() {
-  const [section, setSection] = useState('login');
+  const router = useRouter()
 
   return (
-    <div>
-      <h1>🌐 GJnet WiFi Management System</h1>
-      <nav>
-        <button onClick={() => setSection('login')}>Login</button>
-        <button onClick={() => setSection('customers')}>Customers</button>
-        <button onClick={() => setSection('payments')}>Payments</button>
-      </nav>
-
-      {section === 'login' && <div><h2>Login Form</h2></div>}
-      {section === 'customers' && <div><h2>Customers Data</h2></div>}
-      {section === 'payments' && <div><h2>Payments Data</h2></div>}
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-indigo-500 to-blue-600">
+      <button
+        onClick={() => router.push('/login')}
+        className="px-6 py-3 bg-white text-blue-600 font-bold rounded-lg shadow hover:bg-gray-100 transition"
+      >
+        Go to Login
+      </button>
     </div>
-  );
+  )
 }

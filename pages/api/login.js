@@ -1,25 +1,53 @@
-
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { getCollection } from '@/lib/db';
+import { connectToCluster } from "../../lib/db";
+import bcrypt from "bcrypt";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method Not Allowed" });
+  }
 
-  const { username, password } = req.body;
+  const { username, password, role } = req.body;
+
+  if (!username || !password || !role) {
+    return res.status(400).json({ message: "Username, password, and role are required" });
+  }
+
   try {
-    const users = await getCollection(process.env.COUCHBASE_USERS_COL);
-    const result = await users.get(username).catch(() => null);
+    const cluster = await connectToCluster();
+    const bucket = cluster.bucket(process.env.COUCHBASE_BUCKET);
+    const scope = bucket.scope(process.env.COUCHBASE_SCOPE || "_default");
+    const collection = scope.collection(process.env.COUCHBASE_COLLECTION || "users");
 
-    if (!result) return res.status(401).json({ error: 'User not found' });
-    const user = result.value;
+    // Query ke Couchbase
+    const query = `
+      SELECT META(u).id, u.username, u.password, u.role
+      FROM \`${process.env.COUCHBASE_BUCKET}\`._default.\`${process.env.COUCHBASE_COLLECTION}\` u
+      WHERE u.username = $username AND u.role = $role
+      LIMIT 1
+    `;
 
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    const result = await cluster.query(query, {
+      parameters: { username, role },
+    });
 
-    const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    return res.status(200).json({ token });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const user = result.rows[0].u;
+
+    // Verifikasi password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: { username: user.username, role: user.role },
+    });
+  } catch (error) {
+    console.error("❌ Login error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }

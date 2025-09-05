@@ -17,10 +17,8 @@
 - CAPELLA_BUCKET
 
 4. Deploy → akses endpoint:
+- GET /api/ping → test apakah API jalan
 - POST /api/login
 - GET /api/customers
 - POST /api/customers
 - POST /api/payments
-
-## Frontend
-Edit `frontend/settings.js` dan ganti `your-project` dengan nama project di Vercel.

@@ -18,7 +18,8 @@ export default async function handler(req, res) {
     const scope = bucket.scope(process.env.COUCHBASE_SCOPE || "_default");
     const collection = scope.collection(process.env.COUCHBASE_COLLECTION || "users");
 
-    // Query ke Couchbase
+    console.log(`🔹 Querying user: ${username} with role: ${role}`);
+
     const query = `
       SELECT META(u).id, u.username, u.password, u.role
       FROM \`${process.env.COUCHBASE_BUCKET}\`._default.\`${process.env.COUCHBASE_COLLECTION}\` u
@@ -31,6 +32,7 @@ export default async function handler(req, res) {
     });
 
     if (result.rows.length === 0) {
+      console.warn("⚠️ User not found");
       return res.status(401).json({ message: "User not found" });
     }
 
@@ -39,8 +41,11 @@ export default async function handler(req, res) {
     // Verifikasi password
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
+      console.warn("⚠️ Invalid password for user:", username);
       return res.status(401).json({ message: "Invalid password" });
     }
+
+    console.log("✅ Login successful for user:", username);
 
     return res.status(200).json({
       message: "Login successful",

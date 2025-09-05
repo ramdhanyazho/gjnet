@@ -1,1 +1,1 @@
-window.API_BASE = "https://your-project.vercel.app/api";
+window.API_BASE = "https://gjnet.vercel.app/api";

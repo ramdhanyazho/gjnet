@@ -3,44 +3,50 @@ import { useRouter } from "next/router";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({});
+  const [form, setForm] = useState({ customer_id: "", amount: "", status: "paid" });
   const [user, setUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [showForm, setShowForm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [sortField, setSortField] = useState(null);
+  const [sortAsc, setSortAsc] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+
   const router = useRouter();
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (!storedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    const parsedUser = JSON.parse(storedUser);
-    if (!parsedUser.username || !["admin", "operator"].includes(parsedUser.role)) {
-      router.replace("/login");
-      return;
-    }
-
-    setUser(parsedUser);
-    fetchPayments();
-  }, [router]);
 
   const fetchPayments = async () => {
     const res = await fetch("/api/payments");
-    const data = await res.json();
-    setPayments(data);
-    setLoading(false);
+    const d = await res.json();
+    if (res.ok) setPayments(d.payments || []);
   };
 
-  const savePayment = async () => {
-    // Cegah operator mengedit
-    if (form.id && user.role !== "admin") {
-      alert("Operator tidak boleh mengedit data.");
-      return;
-    }
+  useEffect(() => {
+    const stored = localStorage.getItem("user");
+    if (!stored) return router.replace("/login");
 
-    const url = form.id ? `/api/payments/${form.id}` : "/api/payments";
-    const method = form.id ? "PUT" : "POST";
+    const parsed = JSON.parse(stored);
+    setUser(parsed);
+    fetchPayments();
+  }, [router]);
+
+  const filteredPayments = payments
+    .filter((p) =>
+      p.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter((p) =>
+      statusFilter === "all" ? true : p.status === statusFilter
+    )
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
+      if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
+      return 0;
+    });
+
+  const handleSave = async () => {
+    const method = editMode ? "PUT" : "POST";
+    const url = editMode ? `/api/payments/${form.id}` : "/api/payments";
 
     await fetch(url, {
       method,
@@ -48,147 +54,201 @@ export default function PaymentsPage() {
       body: JSON.stringify(form),
     });
 
-    setForm({});
     fetchPayments();
+    setShowForm(false);
+    setForm({ customer_id: "", amount: "", status: "paid" });
+    setEditMode(false);
   };
 
-  const deletePayment = async (id) => {
-    if (user.role !== "admin") {
-      alert("Operator tidak boleh menghapus data.");
-      return;
-    }
+  const handleEdit = (p) => {
+    setForm(p);
+    setEditMode(true);
+    setShowForm(true);
+  };
 
+  const handleDelete = async (id) => {
     if (!confirm("Yakin hapus data ini?")) return;
-    await fetch(`/api/payments/${id}`, { method: "DELETE" });
+    await fetch("/api/payments/" + id, { method: "DELETE" });
     fetchPayments();
   };
 
-  if (loading || !user) return <p>Loading...</p>;
+  const handleExport = () => {
+    const csv = [
+      ["No", "Customer", "Amount", "Status", "Date"],
+      ...filteredPayments.map((p, i) => [
+        i + 1,
+        p.customer_name,
+        p.amount,
+        p.status,
+        p.date,
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payments.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  function toggleSort(field) {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  }
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">💰 Payments</h1>
-
-      {/* Form Tambah/Edit */}
-      <div className="mb-6 space-y-2 p-4 border rounded bg-gray-50">
-        <input
-          placeholder="Nama"
-          className="p-2 border rounded w-full"
-          value={form.name || ""}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <input
-          placeholder="Alamat"
-          className="p-2 border rounded w-full"
-          value={form.address || ""}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-        />
-        <input
-          placeholder="No HP"
-          className="p-2 border rounded w-full"
-          value={form.phone || ""}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
-        <input
-          type="date"
-          className="p-2 border rounded w-full"
-          value={form.created_at || ""}
-          onChange={(e) => setForm({ ...form, created_at: e.target.value })}
-        />
-        <input
-          placeholder="Paket"
-          type="number"
-          className="p-2 border rounded w-full"
-          value={form.package || ""}
-          onChange={(e) => setForm({ ...form, package: e.target.value })}
-        />
-        <input
-          placeholder="Status"
-          className="p-2 border rounded w-full"
-          value={form.status || "aktif"}
-          onChange={(e) => setForm({ ...form, status: e.target.value })}
-        />
-        <input
-          placeholder="Bayar pertama"
-          type="number"
-          className="p-2 border rounded w-full"
-          value={form.first_payment || ""}
-          onChange={(e) => setForm({ ...form, first_payment: e.target.value })}
-        />
-        <input
-          placeholder="Biaya"
-          type="number"
-          className="p-2 border rounded w-full"
-          value={form.fee || ""}
-          onChange={(e) => setForm({ ...form, fee: e.target.value })}
-        />
-
-        <div className="space-x-2">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">💰 Payments</h1>
+        {user && (user.role === "admin" || user.role === "operator") && (
           <button
-            onClick={savePayment}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={() => router.push("/dashboard")}
+            className="text-blue-600 underline"
           >
-            {form.id ? "Update" : "Tambah"}
+            ⬅ Back to Dashboard
           </button>
-          {form.id && (
-            <button
-              onClick={() => setForm({})}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
-            >
-              Batal
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Tabel Data */}
-      <table className="w-full border">
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Find by customer name"
+          className="p-2 border rounded w-full sm:w-auto"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="p-2 border rounded"
+        >
+          <option value="all">All Status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+        </select>
+        <select
+          value={rowsPerPage}
+          onChange={(e) => setRowsPerPage(Number(e.target.value))}
+          className="p-2 border rounded"
+        >
+          <option value={10}>Show 10</option>
+          <option value={50}>Show 50</option>
+          <option value={100}>Show 100</option>
+        </select>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          + Add Payment
+        </button>
+        <button
+          onClick={handleExport}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          ⬇ Export CSV
+        </button>
+      </div>
+
+      <table className="w-full border text-sm">
         <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">No</th>
-            <th className="border p-2">Nama</th>
-            <th className="border p-2">Alamat</th>
-            <th className="border p-2">Tanggal</th>
-            <th className="border p-2">HP</th>
-            <th className="border p-2">Paket</th>
+          <tr className="bg-gray-200 text-left">
+            <th className="border p-2 cursor-pointer" onClick={() => toggleSort('customer_name')}>Customer</th>
+            <th className="border p-2 cursor-pointer" onClick={() => toggleSort('amount')}>Amount</th>
             <th className="border p-2">Status</th>
-            <th className="border p-2">Bayar Pertama</th>
-            <th className="border p-2">Biaya</th>
-            {user.role === "admin" && <th className="border p-2">Action</th>}
+            <th className="border p-2">Date</th>
+            <th className="border p-2">Action</th>
           </tr>
         </thead>
         <tbody>
-          {payments.map((p, idx) => (
-            <tr key={p.id} className="text-center">
-              <td className="border p-2">{idx + 1}</td>
-              <td className="border p-2">{p.name}</td>
-              <td className="border p-2">{p.address}</td>
-              <td className="border p-2">{p.created_at}</td>
-              <td className="border p-2">{p.phone}</td>
-              <td className="border p-2">{p.package}</td>
+          {filteredPayments.slice(0, rowsPerPage).map((p) => (
+            <tr key={p.id}>
+              <td className="border p-2">{p.customer_name}</td>
+              <td className="border p-2">{p.amount}</td>
               <td className="border p-2">{p.status}</td>
-              <td className="border p-2">{p.first_payment}</td>
-              <td className="border p-2">{p.fee}</td>
-              {user.role === "admin" && (
-                <td className="border p-2 space-x-2">
-                  <button
-                    onClick={() => setForm(p)}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deletePayment(p.id)}
-                    className="bg-red-600 text-white px-2 py-1 rounded"
-                  >
-                    Hapus
-                  </button>
-                </td>
-              )}
+              <td className="border p-2">{p.date}</td>
+              <td className="border p-2 space-x-2">
+                {user?.role === "admin" && (
+                  <>
+                    <button
+                      onClick={() => handleEdit(p)}
+                      className="bg-yellow-500 text-white px-2 py-1 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      className="bg-red-600 text-white px-2 py-1 rounded"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {/* Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded w-full max-w-md space-y-2">
+            <h2 className="text-lg font-semibold">
+              {editMode ? "Edit" : "Add"} Payment
+            </h2>
+            <input
+              placeholder="Customer ID"
+              className="p-2 border rounded w-full"
+              value={form.customer_id}
+              onChange={(e) =>
+                setForm({ ...form, customer_id: e.target.value })
+              }
+            />
+            <input
+              placeholder="Amount"
+              className="p-2 border rounded w-full"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            />
+            <select
+              className="p-2 border rounded w-full"
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+            >
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+            </select>
+
+            <div className="flex justify-end space-x-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setForm({});
+                  setEditMode(false);
+                }}
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { execute } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -8,16 +9,11 @@ export default async function handler(req, res) {
 
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
-  }
-
   try {
     const users = await execute(
       "SELECT id, username, password, role FROM users WHERE username = ?",
       [username]
     );
-    console.log("DEBUG users query:", users);
 
     if (users.length === 0) {
       return res.status(401).json({ message: "User not found" });
@@ -25,11 +21,20 @@ export default async function handler(req, res) {
 
     const user = users[0];
     const match = await bcrypt.compare(password, user.password);
-    console.log("DEBUG bcrypt.compare:", match);
 
     if (!match) {
       return res.status(401).json({ message: "Invalid password" });
     }
+
+    // Buat JWT
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Simpan token di cookie httpOnly
+    res.setHeader("Set-Cookie", `token=${token}; HttpOnly; Path=/; Max-Age=3600`);
 
     return res.status(200).json({
       message: "Login successful",

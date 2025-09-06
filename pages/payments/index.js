@@ -20,7 +20,7 @@ export default function PaymentsPage() {
     package: "",
     status: "aktif",
     first_payment: "",
-    fee: ""
+    fee: "",
   });
 
   const router = useRouter();
@@ -69,7 +69,7 @@ export default function PaymentsPage() {
         package: "",
         status: "aktif",
         first_payment: "",
-        fee: ""
+        fee: "",
       });
       setEditId(null);
     }
@@ -77,19 +77,13 @@ export default function PaymentsPage() {
   };
 
   const handleSubmit = async () => {
-    if (editId) {
-      await fetch(`/api/payments/${editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-    } else {
-      await fetch("/api/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-    }
+    const url = editId ? `/api/payments/${editId}` : "/api/payments";
+    const method = editId ? "PUT" : "POST";
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
     setFormOpen(false);
     setEditId(null);
     setForm({});
@@ -102,35 +96,28 @@ export default function PaymentsPage() {
     fetchPayments();
   };
 
-  const exportToExcel = () => {
-    const dataToExport = payments.map((p) => ({
-      ID: p.id,
-      Nama: p.name,
-      Alamat: p.address,
-      HP: p.phone,
-      Tanggal: p.created_at,
-      Paket: p.package,
-      Status: p.status,
-      "Bayar Pertama": p.first_payment,
-      Biaya: p.fee,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Payments");
-
-    XLSX.writeFile(workbook, "payments_export.xlsx");
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(filtered);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Payments");
+    XLSX.writeFile(wb, "payments.xlsx");
   };
 
-  const exportToPDF = () => {
+  const exportPDF = () => {
     const doc = new jsPDF();
-    doc.text("Payments Report", 14, 16);
-
-    const tableColumn = [
-      "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
-      "Status", "Bayar Pertama", "Biaya"
+    doc.text("Payments", 14, 10);
+    const columns = [
+      "ID",
+      "Nama",
+      "Alamat",
+      "HP",
+      "Tanggal",
+      "Paket",
+      "Status",
+      "Bayar Pertama",
+      "Biaya",
     ];
-    const tableRows = payments.map((p) => [
+    const rows = filtered.map((p) => [
       p.id,
       p.name,
       p.address,
@@ -141,123 +128,117 @@ export default function PaymentsPage() {
       p.first_payment,
       p.fee,
     ]);
-
-    doc.autoTable({
-      startY: 20,
-      head: [tableColumn],
-      body: tableRows,
-      styles: { fontSize: 8 },
-    });
-
-    doc.save("payments_export.pdf");
+    doc.autoTable({ head: [columns], body: rows, startY: 20 });
+    doc.save("payments.pdf");
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-blue-700 mb-4">💰 Payments - Welcome GJNET</h1>
+    <div className="min-h-screen bg-[#f0f6ff] text-[#1e293b] p-6 font-sans">
+      <h1 className="text-3xl font-bold mb-4 text-blue-800">💰 Payments - Welcome GJNET</h1>
 
-      {/* Tombol kembali ke dashboard */}
-      {(user?.role === "admin" || user?.role === "operator") && (
+      {user?.role && (
         <button
           onClick={() => router.push("/dashboard")}
-          className="mb-4 bg-gray-300 hover:bg-gray-400 text-sm px-4 py-1 rounded"
+          className="mb-4 bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2 rounded text-sm"
         >
           ← Kembali ke Dashboard
         </button>
       )}
 
-      {/* Pencarian dan opsi row */}
-      <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <input
           type="text"
-          placeholder="Cari..."
+          placeholder="🔍 Cari data..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-1 rounded w-full sm:w-1/3"
+          className="border border-blue-300 px-4 py-2 rounded w-full sm:w-1/3"
         />
-        <div>
-          <label className="mr-2">Rows:</label>
+        <div className="flex items-center gap-2">
+          <label>Rows:</label>
           <select
             value={rowLimit}
             onChange={(e) => setRowLimit(Number(e.target.value))}
-            className="border px-2 py-1 rounded"
+            className="border border-blue-300 px-2 py-1 rounded"
           >
             <option value={10}>10</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
         </div>
-        {user?.role !== "readonly" && (
+        <div className="flex gap-2">
           <button
-            onClick={() => openForm()}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
+            onClick={exportExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
           >
-            + Tambah Payment
+            📥 Excel
           </button>
-        )}
+          <button
+            onClick={exportPDF}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm"
+          >
+            📄 PDF
+          </button>
+          {user?.role !== "readonly" && (
+            <button
+              onClick={() => openForm()}
+              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded text-sm"
+            >
+              + Tambah
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tombol Export */}
-      {user?.role !== "readonly" && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={exportToExcel}
-            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
-          >
-            📤 Export to Excel
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-          >
-            🧾 Export to PDF
-          </button>
-        </div>
-      )}
-
-      {/* Tabel */}
-      <div className="overflow-auto">
-        <table className="min-w-full border text-sm">
-          <thead>
-            <tr className="bg-gray-200 text-left">
-              <th className="border p-2">ID</th>
-              <th className="border p-2">Nama</th>
-              <th className="border p-2">Alamat</th>
-              <th className="border p-2">HP</th>
-              <th className="border p-2">Tanggal</th>
-              <th className="border p-2">Paket</th>
-              <th className="border p-2">Status</th>
-              <th className="border p-2">Bayar Pertama</th>
-              <th className="border p-2">Biaya</th>
-              {user?.role !== "readonly" && <th className="border p-2">Aksi</th>}
+      <div className="overflow-auto border rounded shadow bg-white">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-blue-100 text-blue-800 font-semibold">
+            <tr>
+              {[
+                "ID",
+                "Nama",
+                "Alamat",
+                "HP",
+                "Tanggal",
+                "Paket",
+                "Status",
+                "Bayar Pertama",
+                "Biaya",
+              ].map((h) => (
+                <th key={h} className="px-3 py-2 border">
+                  {h}
+                </th>
+              ))}
+              {user?.role !== "readonly" && <th className="px-3 py-2 border">Aksi</th>}
             </tr>
           </thead>
           <tbody>
             {filtered.slice(0, rowLimit).map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="border p-2">{p.id}</td>
-                <td className="border p-2">{p.name}</td>
-                <td className="border p-2">{p.address}</td>
-                <td className="border p-2">{p.phone}</td>
-                <td className="border p-2">{p.created_at}</td>
-                <td className="border p-2">{p.package}</td>
-                <td className="border p-2">{p.status}</td>
-                <td className="border p-2">{p.first_payment}</td>
-                <td className="border p-2">{p.fee}</td>
+              <tr key={p.id} className="hover:bg-blue-50">
+                <td className="border px-3 py-1">{p.id}</td>
+                <td className="border px-3 py-1">{p.name}</td>
+                <td className="border px-3 py-1">{p.address}</td>
+                <td className="border px-3 py-1">{p.phone}</td>
+                <td className="border px-3 py-1">{p.created_at}</td>
+                <td className="border px-3 py-1">{p.package}</td>
+                <td className="border px-3 py-1">{p.status}</td>
+                <td className="border px-3 py-1">{p.first_payment}</td>
+                <td className="border px-3 py-1">{p.fee}</td>
                 {user?.role !== "readonly" && (
-                  <td className="border p-2 space-x-2">
+                  <td className="border px-3 py-1 space-x-2">
                     <button
                       onClick={() => openForm(p)}
                       className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded"
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                    >
-                      Hapus
-                    </button>
+                    {user?.role === "admin" && (
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                      >
+                        Hapus
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -266,38 +247,45 @@ export default function PaymentsPage() {
         </table>
       </div>
 
-      {/* Modal Form Tambah/Edit */}
+      {/* Modal Form */}
       {formOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
           <div className="bg-white p-6 rounded shadow w-full max-w-md">
-            <h2 className="text-lg font-bold mb-4">
+            <h2 className="text-lg font-bold mb-4 text-blue-800">
               {editId ? "Edit Payment" : "Tambah Payment"}
             </h2>
-            {[["name", "Nama"], ["address", "Alamat"], ["phone", "No HP"], ["created_at", "Tanggal"], ["package", "Paket"], ["status", "Status"], ["first_payment", "Bayar Pertama"], ["fee", "Biaya"]].map(
-              ([key, label]) => (
-                <input
-                  key={key}
-                  name={key}
-                  placeholder={label}
-                  value={form[key] || ""}
-                  onChange={handleChange}
-                  className="w-full border px-3 py-2 rounded mb-2"
-                />
-              )
-            )}
-            <div className="flex justify-end space-x-2">
+            {[
+              ["name", "Nama"],
+              ["address", "Alamat"],
+              ["phone", "No HP"],
+              ["created_at", "Tanggal"],
+              ["package", "Paket"],
+              ["status", "Status"],
+              ["first_payment", "Bayar Pertama"],
+              ["fee", "Biaya"],
+            ].map(([key, label]) => (
+              <input
+                key={key}
+                name={key}
+                placeholder={label}
+                value={form[key] || ""}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded mb-2"
+              />
+            ))}
+            <div className="flex justify-end space-x-2 mt-2">
               <button
                 onClick={() => {
                   setFormOpen(false);
                   setEditId(null);
                 }}
-                className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded"
+                className="bg-gray-400 text-white px-4 py-2 rounded"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                className="bg-blue-600 text-white px-4 py-2 rounded"
               >
                 Simpan
               </button>

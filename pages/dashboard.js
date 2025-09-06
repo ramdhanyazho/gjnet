@@ -15,7 +15,6 @@ export default function Dashboard() {
 
     const parsedUser = JSON.parse(storedUser);
 
-    // IZINKAN ADMIN & OPERATOR
     if (parsedUser.role !== "admin" && parsedUser.role !== "operator") {
       router.replace("/login");
       return;
@@ -36,46 +35,52 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 text-white text-xl font-semibold">Loading...</div>;
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p>Welcome, {user.username} 👋</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-8 text-center space-y-6">
+        <h1 className="text-3xl font-bold text-blue-700">Welcome to GJNET Dashboard</h1>
+        <p className="text-gray-700 font-medium">Hello, <span className="font-semibold">{user.username}</span> 👋</p>
 
-      <div className="mt-6 space-y-2">
-        {user.role === "admin" && (
+        <div className="space-y-3 text-left">
+          {user.role === "admin" && (
+            <button
+              onClick={() => router.push("/users")}
+              className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all"
+            >
+              Manage Users
+            </button>
+          )}
           <button
-            onClick={() => router.push("/users")}
-            className="block w-full bg-blue-500 text-white p-2 rounded"
+            onClick={() => router.push("/customers")}
+            className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:brightness-110 transition-all"
           >
-            Manage Users
+            Manage Customers
           </button>
-        )}
-        <button
-          onClick={() => router.push("/customers")}
-          className="block w-full bg-green-500 text-white p-2 rounded"
-        >
-          Manage Customers
-        </button>
-        <button
-          onClick={() => router.push("/payments")}
-          className="block w-full bg-purple-500 text-white p-2 rounded"
-        >
-          Payment
-        </button>
-        <button
-          onClick={() => router.push("/change-password")}
-          className="block w-full bg-yellow-500 text-white p-2 rounded"
-        >
-          Change Password
-        </button>
-        <button
-          onClick={logout}
-          className="block w-full bg-red-500 text-white p-2 rounded"
-        >
-          Logout
-        </button>
+          <button
+            onClick={() => router.push("/payments")}
+            className="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-semibold hover:brightness-110 transition-all"
+          >
+            Payment
+          </button>
+          <button
+            onClick={() => router.push("/change-password")}
+            className="w-full py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-lg font-semibold hover:brightness-110 transition-all"
+          >
+            Change Password
+          </button>
+          <button
+            onClick={logout}
+            className="w-full py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold hover:brightness-110 transition-all"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div className="mt-6 text-sm text-gray-400">
+          © Ramdhanyazho 2025
+        </div>
       </div>
     </div>
   );

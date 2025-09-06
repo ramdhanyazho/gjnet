@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "NODE_VERSION": "20",
+    "COUCHBASE_CLUSTER_URL": "@couchbase_cluster_url",
+    "COUCHBASE_USERNAME": "@couchbase_username",
+    "COUCHBASE_PASSWORD": "@couchbase_password",
+    "COUCHBASE_BUCKET": "@couchbase_bucket",
+    "COUCHBASE_SCOPE": "@couchbase_scope",
+    "COUCHBASE_COLLECTION": "@couchbase_collection"
+  },
+  "build": {
+    "env": {
+      "NODE_VERSION": "20"
+    }
+  }
+}

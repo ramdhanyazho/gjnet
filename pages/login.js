@@ -27,18 +27,14 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
 
         // redirect sesuai role
-        if (data.user.role === "admin") {
-          router.push("/dashboard");
-        } else {
-          router.push("/customers");
-        }
-      } else {
-        setError(data.message || data.error || "Login failed");
-      }
-    } catch (err) {
-      setError("Server error");
-    }
-  };
+      const role = data.user.role;
+
+  if (role === "admin" || role === "operator") {
+    router.push("/dashboard");
+  } else {
+    router.push("/customers");
+  }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">

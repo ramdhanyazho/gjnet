@@ -1,4 +1,5 @@
 import { execute } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
@@ -14,11 +15,18 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { name, email, phone } = req.body;
+    const { name, email, phone, password } = req.body;
+
+    // Validasi minimal
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ message: "Semua field wajib diisi" });
+    }
+
     try {
+      const hashedPassword = await bcrypt.hash(password, 10); // Hash password dengan salt 10
       const result = await execute(
-        `INSERT INTO customers (name, email, phone) VALUES (?, ?, ?)`,
-        [name, email, phone]
+        `INSERT INTO customers (name, email, phone, password) VALUES (?, ?, ?, ?)`,
+        [name, email, phone, hashedPassword]
       );
       res.status(200).json({ message: "Customer added", id: result.lastInsertRowid });
     } catch (err) {

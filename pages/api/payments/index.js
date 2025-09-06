@@ -1,19 +1,28 @@
-import { execute } from "../../../lib/db";
+import { execute } from "@/lib/db";
+
 export default async function handler(req, res) {
-  if (req.method === "GET") {
-    const rows = await execute("SELECT p.id, p.customer_id, c.name as customer_name, p.amount, p.status, p.date, p.created_at FROM payments p LEFT JOIN customers c ON p.customer_id = c.id ORDER BY p.id DESC", []);
-    return res.status(200).json({ payments: rows });
-  }
-  if (req.method === "POST") {
-    const { customer_id, amount, status, date } = req.body || {};
-    if (!customer_id || !amount) return res.status(400).json({ message: "customer_id and amount required" });
-    try {
-      await execute("INSERT INTO payments (customer_id, amount, status, date) VALUES (?, ?, ?, ?)", [customer_id, amount, status || null, date || null]);
-      return res.status(201).json({ message: "Payment created" });
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json({ message: "Create failed", error: String(err) });
+  try {
+    if (req.method === "GET") {
+      const rows = await execute("SELECT * FROM payments ORDER BY id DESC");
+      return res.status(200).json(rows);
     }
+
+    if (req.method === "POST") {
+      const { name, address, phone, created_at, package: pkg, status, first_payment, fee } = req.body;
+
+      await execute(
+        `INSERT INTO payments 
+        (name, address, phone, created_at, package, status, first_payment, fee) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, address, phone, created_at, pkg, status, first_payment, fee]
+      );
+
+      return res.status(201).json({ message: "✅ Payment record created" });
+    }
+
+    return res.status(405).json({ message: "Method not allowed" });
+  } catch (error) {
+    console.error("Payments API error:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
-  return res.status(405).json({ message: "Method Not Allowed" });
 }

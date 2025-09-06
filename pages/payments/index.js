@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -99,15 +102,65 @@ export default function PaymentsPage() {
     fetchPayments();
   };
 
+  const exportToExcel = () => {
+    const dataToExport = payments.map((p) => ({
+      ID: p.id,
+      Nama: p.name,
+      Alamat: p.address,
+      HP: p.phone,
+      Tanggal: p.created_at,
+      Paket: p.package,
+      Status: p.status,
+      "Bayar Pertama": p.first_payment,
+      Biaya: p.fee,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Payments");
+
+    XLSX.writeFile(workbook, "payments_export.xlsx");
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Payments Report", 14, 16);
+
+    const tableColumn = [
+      "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
+      "Status", "Bayar Pertama", "Biaya"
+    ];
+    const tableRows = payments.map((p) => [
+      p.id,
+      p.name,
+      p.address,
+      p.phone,
+      p.created_at,
+      p.package,
+      p.status,
+      p.first_payment,
+      p.fee,
+    ]);
+
+    doc.autoTable({
+      startY: 20,
+      head: [tableColumn],
+      body: tableRows,
+      styles: { fontSize: 8 },
+    });
+
+    doc.save("payments_export.pdf");
+  };
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">💰 Payments</h1>
+      <h1 className="text-2xl font-bold text-blue-700 mb-4">💰 Payments - Welcome GJNET</h1>
 
       {/* Tombol kembali ke dashboard */}
       {(user?.role === "admin" || user?.role === "operator") && (
         <button
           onClick={() => router.push("/dashboard")}
-          className="mb-4 bg-gray-300 text-sm px-4 py-1 rounded"
+          className="mb-4 bg-gray-300 hover:bg-gray-400 text-sm px-4 py-1 rounded"
         >
           ← Kembali ke Dashboard
         </button>
@@ -137,12 +190,30 @@ export default function PaymentsPage() {
         {user?.role !== "readonly" && (
           <button
             onClick={() => openForm()}
-            className="bg-blue-600 text-white px-4 py-1 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
           >
             + Tambah Payment
           </button>
         )}
       </div>
+
+      {/* Tombol Export */}
+      {user?.role !== "readonly" && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={exportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+          >
+            📤 Export to Excel
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+          >
+            🧾 Export to PDF
+          </button>
+        </div>
+      )}
 
       {/* Tabel */}
       <div className="overflow-auto">
@@ -175,31 +246,18 @@ export default function PaymentsPage() {
                 <td className="border p-2">{p.fee}</td>
                 {user?.role !== "readonly" && (
                   <td className="border p-2 space-x-2">
-                    {user?.role === "admin" && (
-                      <>
-                        <button
-                          onClick={() => openForm(p)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded"
-                        >
-                          Hapus
-                        </button>
-                      </>
-                    )}
-                    {user?.role === "operator" && (
-                      <button
-                        onClick={() => openForm(p)}
-                        className="bg-yellow-500 text-white px-2 py-1 rounded"
-                        disabled
-                      >
-                        (readonly)
-                      </button>
-                    )}
+                    <button
+                      onClick={() => openForm(p)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                    >
+                      Hapus
+                    </button>
                   </td>
                 )}
               </tr>
@@ -215,38 +273,31 @@ export default function PaymentsPage() {
             <h2 className="text-lg font-bold mb-4">
               {editId ? "Edit Payment" : "Tambah Payment"}
             </h2>
-            {[
-              ["name", "Nama"],
-              ["address", "Alamat"],
-              ["phone", "No HP"],
-              ["created_at", "Tanggal"],
-              ["package", "Paket"],
-              ["status", "Status"],
-              ["first_payment", "Bayar Pertama"],
-              ["fee", "Biaya"],
-            ].map(([key, label]) => (
-              <input
-                key={key}
-                name={key}
-                placeholder={label}
-                value={form[key] || ""}
-                onChange={handleChange}
-                className="w-full border px-3 py-2 rounded mb-2"
-              />
-            ))}
+            {[["name", "Nama"], ["address", "Alamat"], ["phone", "No HP"], ["created_at", "Tanggal"], ["package", "Paket"], ["status", "Status"], ["first_payment", "Bayar Pertama"], ["fee", "Biaya"]].map(
+              ([key, label]) => (
+                <input
+                  key={key}
+                  name={key}
+                  placeholder={label}
+                  value={form[key] || ""}
+                  onChange={handleChange}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+              )
+            )}
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => {
                   setFormOpen(false);
                   setEditId(null);
                 }}
-                className="bg-gray-400 text-white px-4 py-2 rounded"
+                className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmit}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
               >
                 Simpan
               </button>

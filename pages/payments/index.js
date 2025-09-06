@@ -3,249 +3,252 @@ import { useRouter } from "next/router";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
-  const [form, setForm] = useState({ customer_id: "", amount: "", status: "paid" });
+  const [filtered, setFiltered] = useState([]);
+  const [search, setSearch] = useState("");
+  const [rowLimit, setRowLimit] = useState(10);
   const [user, setUser] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [showForm, setShowForm] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [sortField, setSortField] = useState(null);
-  const [sortAsc, setSortAsc] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    created_at: "",
+    package: "",
+    status: "aktif",
+    first_payment: "",
+    fee: ""
+  });
 
   const router = useRouter();
 
   const fetchPayments = async () => {
     const res = await fetch("/api/payments");
-    const d = await res.json();
-    if (res.ok) setPayments(d.payments || []);
+    const data = await res.json();
+    setPayments(data);
+    setFiltered(data);
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (!stored) return router.replace("/login");
-
-    const parsed = JSON.parse(stored);
-    setUser(parsed);
+    const u = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!u.username) {
+      router.push("/login");
+      return;
+    }
+    setUser(u);
     fetchPayments();
   }, [router]);
 
-  const filteredPayments = payments
-    .filter((p) =>
-      p.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((p) =>
-      statusFilter === "all" ? true : p.status === statusFilter
-    )
-    .sort((a, b) => {
-      if (!sortField) return 0;
-      if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
-      if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
-      return 0;
-    });
+  useEffect(() => {
+    const q = search.toLowerCase();
+    const filteredData = payments.filter((p) =>
+      Object.values(p).some((val) =>
+        String(val).toLowerCase().includes(q)
+      )
+    );
+    setFiltered(filteredData);
+  }, [search, payments]);
 
-  const handleSave = async () => {
-    const method = editMode ? "PUT" : "POST";
-    const url = editMode ? `/api/payments/${form.id}` : "/api/payments";
-
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    fetchPayments();
-    setShowForm(false);
-    setForm({ customer_id: "", amount: "", status: "paid" });
-    setEditMode(false);
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleEdit = (p) => {
-    setForm(p);
-    setEditMode(true);
-    setShowForm(true);
+  const openForm = (data = null) => {
+    if (data) {
+      setForm(data);
+      setEditId(data.id);
+    } else {
+      setForm({
+        name: "",
+        address: "",
+        phone: "",
+        created_at: "",
+        package: "",
+        status: "aktif",
+        first_payment: "",
+        fee: ""
+      });
+      setEditId(null);
+    }
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (editId) {
+      await fetch(`/api/payments/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+    } else {
+      await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+    }
+    setFormOpen(false);
+    setEditId(null);
+    setForm({});
+    fetchPayments();
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Yakin hapus data ini?")) return;
-    await fetch("/api/payments/" + id, { method: "DELETE" });
+    if (!confirm("Hapus data ini?")) return;
+    await fetch(`/api/payments/${id}`, { method: "DELETE" });
     fetchPayments();
   };
 
-  const handleExport = () => {
-    const csv = [
-      ["No", "Customer", "Amount", "Status", "Date"],
-      ...filteredPayments.map((p, i) => [
-        i + 1,
-        p.customer_name,
-        p.amount,
-        p.status,
-        p.date,
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "payments.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  function toggleSort(field) {
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortField(field);
-      setSortAsc(true);
-    }
-  }
-
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">💰 Payments</h1>
-        {user && (user.role === "admin" || user.role === "operator") && (
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="text-blue-600 underline"
+      <h1 className="text-2xl font-bold mb-4">💰 Payments</h1>
+
+      {/* Tombol kembali ke dashboard */}
+      {(user?.role === "admin" || user?.role === "operator") && (
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="mb-4 bg-gray-300 text-sm px-4 py-1 rounded"
+        >
+          ← Kembali ke Dashboard
+        </button>
+      )}
+
+      {/* Pencarian dan opsi row */}
+      <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+        <input
+          type="text"
+          placeholder="Cari..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border px-3 py-1 rounded w-full sm:w-1/3"
+        />
+        <div>
+          <label className="mr-2">Rows:</label>
+          <select
+            value={rowLimit}
+            onChange={(e) => setRowLimit(Number(e.target.value))}
+            className="border px-2 py-1 rounded"
           >
-            ⬅ Back to Dashboard
+            <option value={10}>10</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+        {user?.role !== "readonly" && (
+          <button
+            onClick={() => openForm()}
+            className="bg-blue-600 text-white px-4 py-1 rounded"
+          >
+            + Tambah Payment
           </button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Find by customer name"
-          className="p-2 border rounded w-full sm:w-auto"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="p-2 border rounded"
-        >
-          <option value="all">All Status</option>
-          <option value="paid">Paid</option>
-          <option value="pending">Pending</option>
-        </select>
-        <select
-          value={rowsPerPage}
-          onChange={(e) => setRowsPerPage(Number(e.target.value))}
-          className="p-2 border rounded"
-        >
-          <option value={10}>Show 10</option>
-          <option value={50}>Show 50</option>
-          <option value={100}>Show 100</option>
-        </select>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          + Add Payment
-        </button>
-        <button
-          onClick={handleExport}
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          ⬇ Export CSV
-        </button>
+      {/* Tabel */}
+      <div className="overflow-auto">
+        <table className="min-w-full border text-sm">
+          <thead>
+            <tr className="bg-gray-200 text-left">
+              <th className="border p-2">ID</th>
+              <th className="border p-2">Nama</th>
+              <th className="border p-2">Alamat</th>
+              <th className="border p-2">HP</th>
+              <th className="border p-2">Tanggal</th>
+              <th className="border p-2">Paket</th>
+              <th className="border p-2">Status</th>
+              <th className="border p-2">Bayar Pertama</th>
+              <th className="border p-2">Biaya</th>
+              {user?.role !== "readonly" && <th className="border p-2">Aksi</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.slice(0, rowLimit).map((p) => (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="border p-2">{p.id}</td>
+                <td className="border p-2">{p.name}</td>
+                <td className="border p-2">{p.address}</td>
+                <td className="border p-2">{p.phone}</td>
+                <td className="border p-2">{p.created_at}</td>
+                <td className="border p-2">{p.package}</td>
+                <td className="border p-2">{p.status}</td>
+                <td className="border p-2">{p.first_payment}</td>
+                <td className="border p-2">{p.fee}</td>
+                {user?.role !== "readonly" && (
+                  <td className="border p-2 space-x-2">
+                    {user?.role === "admin" && (
+                      <>
+                        <button
+                          onClick={() => openForm(p)}
+                          className="bg-yellow-500 text-white px-2 py-1 rounded"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="bg-red-500 text-white px-2 py-1 rounded"
+                        >
+                          Hapus
+                        </button>
+                      </>
+                    )}
+                    {user?.role === "operator" && (
+                      <button
+                        onClick={() => openForm(p)}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded"
+                        disabled
+                      >
+                        (readonly)
+                      </button>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <table className="w-full border text-sm">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2">Id</th>
-            <th className="border p-2">Name</th>
-            <th className="border p-2">Address</th>
-            <th className="border p-2">Phone</th>
-            <th className="border p-2">Created At</th>
-            <th className="border p-2">Package</th>
-            <th className="border p-2">Status</th>
-            <th className="border p-2">First Payment</th>
-            <th className="border p-2">Fee</th>
-            <th className="border p-2">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredPayments.slice(0, rowLimit).map((p, idx) => (
-            <tr key={p.id} className="text-center">
-              <td className="border p-2">{p.id}</td>
-              <td className="border p-2">{p.name}</td>
-              <td className="border p-2">{p.address}</td>
-              <td className="border p-2">{p.phone}</td>
-              <td className="border p-2">{p.created_at}</td>
-              <td className="border p-2">{p.package}</td>
-              <td className="border p-2">{p.status}</td>
-              <td className="border p-2">{p.first_payment}</td>
-              <td className="border p-2">{p.fee}</td>
-              <td className="border p-2 space-x-2">
-                {user?.role === "admin" && (
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className="bg-red-600 text-white px-2 py-1 rounded"
-                  >
-                    Delete
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded w-full max-w-md space-y-2">
-            <h2 className="text-lg font-semibold">
-              {editMode ? "Edit" : "Add"} Payment
+      {/* Modal Form Tambah/Edit */}
+      {formOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <div className="bg-white p-6 rounded shadow w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">
+              {editId ? "Edit Payment" : "Tambah Payment"}
             </h2>
-            <input
-              placeholder="Customer ID"
-              className="p-2 border rounded w-full"
-              value={form.customer_id}
-              onChange={(e) =>
-                setForm({ ...form, customer_id: e.target.value })
-              }
-            />
-            <input
-              placeholder="Amount"
-              className="p-2 border rounded w-full"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            />
-            <select
-              className="p-2 border rounded w-full"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            >
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-            </select>
-
-            <div className="flex justify-end space-x-2 pt-2">
+            {[
+              ["name", "Nama"],
+              ["address", "Alamat"],
+              ["phone", "No HP"],
+              ["created_at", "Tanggal"],
+              ["package", "Paket"],
+              ["status", "Status"],
+              ["first_payment", "Bayar Pertama"],
+              ["fee", "Biaya"],
+            ].map(([key, label]) => (
+              <input
+                key={key}
+                name={key}
+                placeholder={label}
+                value={form[key] || ""}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded mb-2"
+              />
+            ))}
+            <div className="flex justify-end space-x-2">
               <button
                 onClick={() => {
-                  setShowForm(false);
-                  setForm({});
-                  setEditMode(false);
+                  setFormOpen(false);
+                  setEditId(null);
                 }}
                 className="bg-gray-400 text-white px-4 py-2 rounded"
               >
-                Cancel
+                Batal
               </button>
               <button
-                onClick={handleSave}
+                onClick={handleSubmit}
                 className="bg-blue-600 text-white px-4 py-2 rounded"
               >
-                Save
+                Simpan
               </button>
             </div>
           </div>

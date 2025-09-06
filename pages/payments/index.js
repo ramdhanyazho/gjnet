@@ -4,6 +4,26 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+// Helper: format date for input (YYYY-MM-DD)
+function formatInputDate(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Helper: format date for display (DD-MM-YYYY)
+function formatDisplayDate(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -107,22 +127,15 @@ export default function PaymentsPage() {
     const doc = new jsPDF();
     doc.text("Payments", 14, 10);
     const columns = [
-      "ID",
-      "Nama",
-      "Alamat",
-      "HP",
-      "Tanggal",
-      "Paket",
-      "Status",
-      "Bayar Pertama",
-      "Biaya",
+      "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
+      "Status", "Bayar Pertama", "Biaya"
     ];
     const rows = filtered.map((p) => [
       p.id,
       p.name,
       p.address,
       p.phone,
-      p.created_at,
+      formatDisplayDate(p.created_at),
       p.package,
       p.status,
       p.first_payment,
@@ -194,19 +207,10 @@ export default function PaymentsPage() {
           <thead className="bg-blue-100 text-blue-800 font-semibold">
             <tr>
               {[
-                "ID",
-                "Nama",
-                "Alamat",
-                "HP",
-                "Tanggal",
-                "Paket",
-                "Status",
-                "Bayar Pertama",
-                "Biaya",
+                "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
+                "Status", "Bayar Pertama", "Biaya"
               ].map((h) => (
-                <th key={h} className="px-3 py-2 border">
-                  {h}
-                </th>
+                <th key={h} className="px-3 py-2 border">{h}</th>
               ))}
               {user?.role !== "readonly" && <th className="px-3 py-2 border">Aksi</th>}
             </tr>
@@ -218,7 +222,7 @@ export default function PaymentsPage() {
                 <td className="border px-3 py-1">{p.name}</td>
                 <td className="border px-3 py-1">{p.address}</td>
                 <td className="border px-3 py-1">{p.phone}</td>
-                <td className="border px-3 py-1">{p.created_at}</td>
+                <td className="border px-3 py-1">{formatDisplayDate(p.created_at)}</td>
                 <td className="border px-3 py-1">{p.package}</td>
                 <td className="border px-3 py-1">{p.status}</td>
                 <td className="border px-3 py-1">{p.first_payment}</td>
@@ -263,16 +267,27 @@ export default function PaymentsPage() {
               ["status", "Status"],
               ["first_payment", "Bayar Pertama"],
               ["fee", "Biaya"],
-            ].map(([key, label]) => (
-              <input
-                key={key}
-                name={key}
-                placeholder={label}
-                value={form[key] || ""}
-                onChange={handleChange}
-                className="w-full border px-3 py-2 rounded mb-2"
-              />
-            ))}
+            ].map(([key, label]) =>
+              form.created_at && key === "created_at" ? (
+                <input
+                  key={key}
+                  type="date"
+                  name={key}
+                  value={formatInputDate(form[key])}
+                  onChange={handleChange}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+              ) : (
+                <input
+                  key={key}
+                  name={key}
+                  placeholder={label}
+                  value={form[key] || ""}
+                  onChange={handleChange}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+              )
+            )}
             <div className="flex justify-end space-x-2 mt-2">
               <button
                 onClick={() => {

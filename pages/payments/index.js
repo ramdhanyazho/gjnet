@@ -160,37 +160,39 @@ export default function PaymentsPage() {
 
       <table className="w-full border text-sm">
         <thead>
-          <tr className="bg-gray-200 text-left">
-            <th className="border p-2 cursor-pointer" onClick={() => toggleSort('customer_name')}>Customer</th>
-            <th className="border p-2 cursor-pointer" onClick={() => toggleSort('amount')}>Amount</th>
+          <tr className="bg-gray-200">
+            <th className="border p-2">Id</th>
+            <th className="border p-2">Name</th>
+            <th className="border p-2">Address</th>
+            <th className="border p-2">Phone</th>
+            <th className="border p-2">Created At</th>
+            <th className="border p-2">Package</th>
             <th className="border p-2">Status</th>
-            <th className="border p-2">Date</th>
+            <th className="border p-2">First Payment</th>
+            <th className="border p-2">Fee</th>
             <th className="border p-2">Action</th>
           </tr>
         </thead>
         <tbody>
-          {filteredPayments.slice(0, rowsPerPage).map((p) => (
-            <tr key={p.id}>
-              <td className="border p-2">{p.customer_name}</td>
-              <td className="border p-2">{p.amount}</td>
+          {filteredPayments.slice(0, rowLimit).map((p, idx) => (
+            <tr key={p.id} className="text-center">
+              <td className="border p-2">{p.id}</td>
+              <td className="border p-2">{p.name}</td>
+              <td className="border p-2">{p.address}</td>
+              <td className="border p-2">{p.phone}</td>
+              <td className="border p-2">{p.created_at}</td>
+              <td className="border p-2">{p.package}</td>
               <td className="border p-2">{p.status}</td>
-              <td className="border p-2">{p.date}</td>
+              <td className="border p-2">{p.first_payment}</td>
+              <td className="border p-2">{p.fee}</td>
               <td className="border p-2 space-x-2">
                 {user?.role === "admin" && (
-                  <>
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="bg-red-600 text-white px-2 py-1 rounded"
-                    >
-                      Delete
-                    </button>
-                  </>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    className="bg-red-600 text-white px-2 py-1 rounded"
+                  >
+                    Delete
+                  </button>
                 )}
               </td>
             </tr>

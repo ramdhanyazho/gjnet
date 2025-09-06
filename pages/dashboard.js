@@ -14,7 +14,9 @@ export default function Dashboard() {
     }
 
     const parsedUser = JSON.parse(storedUser);
-    if (parsedUser.role !== "admin") {
+
+    // IZINKAN ADMIN & OPERATOR
+    if (parsedUser.role !== "admin" && parsedUser.role !== "operator") {
       router.replace("/login");
       return;
     }
@@ -25,12 +27,10 @@ export default function Dashboard() {
 
   const logout = async () => {
     try {
-      // panggil API untuk clear cookie JWT
       await fetch("/api/users/logout", { method: "POST" });
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      // bersihkan localStorage dan redirect ke login
       localStorage.removeItem("user");
       router.push("/login");
     }
@@ -40,21 +40,29 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+      <h1 className="text-2xl font-bold">Dashboard</h1>
       <p>Welcome, {user.username} 👋</p>
 
       <div className="mt-6 space-y-2">
-        <button
-          onClick={() => router.push("/users")}
-          className="block w-full bg-blue-500 text-white p-2 rounded"
-        >
-          Manage Users
-        </button>
+        {user.role === "admin" && (
+          <button
+            onClick={() => router.push("/users")}
+            className="block w-full bg-blue-500 text-white p-2 rounded"
+          >
+            Manage Users
+          </button>
+        )}
         <button
           onClick={() => router.push("/customers")}
           className="block w-full bg-green-500 text-white p-2 rounded"
         >
           Manage Customers
+        </button>
+        <button
+          onClick={() => router.push("/payments")}
+          className="block w-full bg-purple-500 text-white p-2 rounded"
+        >
+          Payment
         </button>
         <button
           onClick={() => router.push("/change-password")}

@@ -5,7 +5,25 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({});
+  const [user, setUser] = useState(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      router.replace("/login");
+      return;
+    }
+
+    const parsedUser = JSON.parse(storedUser);
+    if (!parsedUser.username || !["admin", "operator"].includes(parsedUser.role)) {
+      router.replace("/login");
+      return;
+    }
+
+    setUser(parsedUser);
+    fetchPayments();
+  }, [router]);
 
   const fetchPayments = async () => {
     const res = await fetch("/api/payments");
@@ -14,40 +32,38 @@ export default function PaymentsPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!user.username || (user.role !== "admin" && user.role !== "operator")) {
-      router.replace("/login");
+  const savePayment = async () => {
+    // Cegah operator mengedit
+    if (form.id && user.role !== "admin") {
+      alert("Operator tidak boleh mengedit data.");
       return;
     }
-    fetchPayments();
-  }, [router]);
 
-  const savePayment = async () => {
-    if (form.id) {
-      await fetch(`/api/payments/${form.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-    } else {
-      await fetch("/api/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-    }
+    const url = form.id ? `/api/payments/${form.id}` : "/api/payments";
+    const method = form.id ? "PUT" : "POST";
+
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
     setForm({});
     fetchPayments();
   };
 
   const deletePayment = async (id) => {
+    if (user.role !== "admin") {
+      alert("Operator tidak boleh menghapus data.");
+      return;
+    }
+
     if (!confirm("Yakin hapus data ini?")) return;
     await fetch(`/api/payments/${id}`, { method: "DELETE" });
     fetchPayments();
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading || !user) return <p>Loading...</p>;
 
   return (
     <div className="p-6">
@@ -107,20 +123,22 @@ export default function PaymentsPage() {
           onChange={(e) => setForm({ ...form, fee: e.target.value })}
         />
 
-        <button
-          onClick={savePayment}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          {form.id ? "Update" : "Tambah"}
-        </button>
-        {form.id && (
+        <div className="space-x-2">
           <button
-            onClick={() => setForm({})}
-            className="ml-2 bg-gray-400 text-white px-4 py-2 rounded"
+            onClick={savePayment}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
           >
-            Batal
+            {form.id ? "Update" : "Tambah"}
           </button>
-        )}
+          {form.id && (
+            <button
+              onClick={() => setForm({})}
+              className="bg-gray-400 text-white px-4 py-2 rounded"
+            >
+              Batal
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabel Data */}
@@ -136,7 +154,7 @@ export default function PaymentsPage() {
             <th className="border p-2">Status</th>
             <th className="border p-2">Bayar Pertama</th>
             <th className="border p-2">Biaya</th>
-            <th className="border p-2">Action</th>
+            {user.role === "admin" && <th className="border p-2">Action</th>}
           </tr>
         </thead>
         <tbody>
@@ -151,20 +169,22 @@ export default function PaymentsPage() {
               <td className="border p-2">{p.status}</td>
               <td className="border p-2">{p.first_payment}</td>
               <td className="border p-2">{p.fee}</td>
-              <td className="border p-2 space-x-2">
-                <button
-                  onClick={() => setForm(p)}
-                  className="bg-yellow-500 text-white px-2 py-1 rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deletePayment(p.id)}
-                  className="bg-red-600 text-white px-2 py-1 rounded"
-                >
-                  Hapus
-                </button>
-              </td>
+              {user.role === "admin" && (
+                <td className="border p-2 space-x-2">
+                  <button
+                    onClick={() => setForm(p)}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deletePayment(p.id)}
+                    className="bg-red-600 text-white px-2 py-1 rounded"
+                  >
+                    Hapus
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

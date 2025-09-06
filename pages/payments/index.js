@@ -302,7 +302,7 @@ export default function PaymentsPage() {
 
       {/* Footer */}
       <footer className="mt-8 text-center text-sm text-blue-800">
-        © {new Date().getFullYear()} Welcome GJNET. All rights reserved.
+        © {new Date().getFullYear()} Welcome Ramdhanyazho. All rights reserved.
       </footer>
     </div>
   );

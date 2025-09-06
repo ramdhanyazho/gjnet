@@ -8,12 +8,12 @@
   ],
   "env": {
     "NODE_VERSION": "20",
-    "COUCHBASE_CLUSTER_URL": "@couchbase_cluster_url",
-    "COUCHBASE_USERNAME": "@couchbase_username",
-    "COUCHBASE_PASSWORD": "@couchbase_password",
-    "COUCHBASE_BUCKET": "@couchbase_bucket",
-    "COUCHBASE_SCOPE": "@couchbase_scope",
-    "COUCHBASE_COLLECTION": "@couchbase_collection"
+    "COUCHBASE_CLUSTER_URL": "couchbases://cb.zlwwgjugjxuxolek.cloud.couchbase.com",
+    "COUCHBASE_USERNAME": "user-admin",
+    "COUCHBASE_PASSWORD": "P@ssw0rd!",
+    "COUCHBASE_BUCKET": "wifi-system",
+    "COUCHBASE_SCOPE": "app",
+    "COUCHBASE_COLLECTION": "users"
   },
   "build": {
     "env": {

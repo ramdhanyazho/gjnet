@@ -27,14 +27,19 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
 
         // redirect sesuai role
-      const role = data.user.role;
-
-  if (role === "admin" || role === "operator") {
-    router.push("/dashboard");
-  } else {
-    router.push("/customers");
-  }
-}
+        const role = data.user.role;
+        if (role === "admin" || role === "operator") {
+          router.push("/dashboard");
+        } else {
+          router.push("/customers");
+        }
+      } else {
+        setError(data.message || data.error || "Login failed");
+      }
+    } catch (err) {
+      setError("Server error");
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -43,29 +48,4 @@ export default function LoginPage() {
         <form onSubmit={submit} className="space-y-4">
           <input
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="username"
-            className="w-full p-2 border rounded"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="password"
-            className="w-full p-2 border rounded"
-          />
-          {error && <div className="text-red-500">{error}</div>}
-          <button className="w-full bg-blue-600 text-white p-2 rounded">
-            Login
-          </button>
-        </form>
-        <div className="mt-4 text-sm">
-          Don't have account?{" "}
-          <a href="/register" className="text-blue-600">
-            Register
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
+            on

@@ -43,7 +43,12 @@ export default async function handler(req, res) {
       user: { id: result.rows[0].id, username: user.username, role: user.role },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Login error:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,   // detail pesan error
+      stack: error.stack      // jejak error
+    });
   }
 }
+

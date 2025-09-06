@@ -3,26 +3,8 @@ import { useRouter } from "next/router";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-
-// Helper: format date for input (YYYY-MM-DD)
-function formatInputDate(dateString) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// Helper: format date for display (DD-MM-YYYY)
-function formatDisplayDate(dateString) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-}
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -36,7 +18,7 @@ export default function PaymentsPage() {
     name: "",
     address: "",
     phone: "",
-    created_at: "",
+    created_at: new Date(),
     package: "",
     status: "aktif",
     first_payment: "",
@@ -76,16 +58,23 @@ export default function PaymentsPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleDateChange = (date) => {
+    setForm({ ...form, created_at: date });
+  };
+
   const openForm = (data = null) => {
     if (data) {
-      setForm(data);
+      setForm({
+        ...data,
+        created_at: new Date(data.created_at),
+      });
       setEditId(data.id);
     } else {
       setForm({
         name: "",
         address: "",
         phone: "",
-        created_at: "",
+        created_at: new Date(),
         package: "",
         status: "aktif",
         first_payment: "",
@@ -97,16 +86,26 @@ export default function PaymentsPage() {
   };
 
   const handleSubmit = async () => {
+    const formattedDate = form.created_at
+      ? `${form.created_at.getFullYear()}-${String(form.created_at.getMonth() + 1).padStart(2, "0")}-${String(form.created_at.getDate()).padStart(2, "0")}`
+      : "";
+
+    const payload = {
+      ...form,
+      created_at: formattedDate,
+    };
+
     const url = editId ? `/api/payments/${editId}` : "/api/payments";
     const method = editId ? "PUT" : "POST";
+
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
+
     setFormOpen(false);
     setEditId(null);
-    setForm({});
     fetchPayments();
   };
 
@@ -127,15 +126,15 @@ export default function PaymentsPage() {
     const doc = new jsPDF();
     doc.text("Payments", 14, 10);
     const columns = [
-      "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
-      "Status", "Bayar Pertama", "Biaya"
+      "ID", "Nama", "Alamat", "HP", "Tanggal",
+      "Paket", "Status", "Bayar Pertama", "Biaya",
     ];
     const rows = filtered.map((p) => [
       p.id,
       p.name,
       p.address,
       p.phone,
-      formatDisplayDate(p.created_at),
+      p.created_at,
       p.package,
       p.status,
       p.first_payment,
@@ -146,7 +145,7 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f6ff] text-[#1e293b] p-6 font-sans">
+    <div className="min-h-screen bg-[#f0f6ff] text-[#1e293b] p-6 font-sans flex flex-col">
       <h1 className="text-3xl font-bold mb-4 text-blue-800">💰 Payments - Welcome GJNET</h1>
 
       {user?.role && (
@@ -207,8 +206,8 @@ export default function PaymentsPage() {
           <thead className="bg-blue-100 text-blue-800 font-semibold">
             <tr>
               {[
-                "ID", "Nama", "Alamat", "HP", "Tanggal", "Paket",
-                "Status", "Bayar Pertama", "Biaya"
+                "ID", "Nama", "Alamat", "HP", "Tanggal",
+                "Paket", "Status", "Bayar Pertama", "Biaya",
               ].map((h) => (
                 <th key={h} className="px-3 py-2 border">{h}</th>
               ))}
@@ -222,7 +221,7 @@ export default function PaymentsPage() {
                 <td className="border px-3 py-1">{p.name}</td>
                 <td className="border px-3 py-1">{p.address}</td>
                 <td className="border px-3 py-1">{p.phone}</td>
-                <td className="border px-3 py-1">{formatDisplayDate(p.created_at)}</td>
+                <td className="border px-3 py-1">{p.created_at}</td>
                 <td className="border px-3 py-1">{p.package}</td>
                 <td className="border px-3 py-1">{p.status}</td>
                 <td className="border px-3 py-1">{p.first_payment}</td>
@@ -262,38 +261,30 @@ export default function PaymentsPage() {
               ["name", "Nama"],
               ["address", "Alamat"],
               ["phone", "No HP"],
-              ["created_at", "Tanggal"],
               ["package", "Paket"],
               ["status", "Status"],
               ["first_payment", "Bayar Pertama"],
               ["fee", "Biaya"],
-            ].map(([key, label]) =>
-              form.created_at && key === "created_at" ? (
-                <input
-                  key={key}
-                  type="date"
-                  name={key}
-                  value={formatInputDate(form[key])}
-                  onChange={handleChange}
-                  className="w-full border px-3 py-2 rounded mb-2"
-                />
-              ) : (
-                <input
-                  key={key}
-                  name={key}
-                  placeholder={label}
-                  value={form[key] || ""}
-                  onChange={handleChange}
-                  className="w-full border px-3 py-2 rounded mb-2"
-                />
-              )
-            )}
+            ].map(([key, label]) => (
+              <input
+                key={key}
+                name={key}
+                placeholder={label}
+                value={form[key] || ""}
+                onChange={handleChange}
+                className="w-full border px-3 py-2 rounded mb-2"
+              />
+            ))}
+            <label className="block text-sm font-semibold mb-1 text-blue-700">Tanggal</label>
+            <DatePicker
+              selected={form.created_at}
+              onChange={handleDateChange}
+              dateFormat="dd-MM-yyyy"
+              className="w-full border px-3 py-2 rounded mb-2"
+            />
             <div className="flex justify-end space-x-2 mt-2">
               <button
-                onClick={() => {
-                  setFormOpen(false);
-                  setEditId(null);
-                }}
+                onClick={() => setFormOpen(false)}
                 className="bg-gray-400 text-white px-4 py-2 rounded"
               >
                 Batal
@@ -308,6 +299,11 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="mt-8 text-center text-sm text-blue-800">
+        © {new Date().getFullYear()} Welcome GJNET. All rights reserved.
+      </footer>
     </div>
   );
 }

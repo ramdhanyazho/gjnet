@@ -23,9 +23,17 @@ export default function Dashboard() {
     setLoading(false);
   }, [router]);
 
-  const logout = () => {
-    localStorage.removeItem("user");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      // panggil API untuk clear cookie JWT
+      await fetch("/api/users/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      // bersihkan localStorage dan redirect ke login
+      localStorage.removeItem("user");
+      router.push("/login");
+    }
   };
 
   if (loading) return <p>Loading...</p>;

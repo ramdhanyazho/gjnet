@@ -1,5 +1,5 @@
 import { execute } from "@/lib/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -13,25 +13,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cluster = await connectToCluster();
-    const bucket = cluster.bucket(process.env.COUCHBASE_BUCKET);
-    const scope = bucket.scope(process.env.COUCHBASE_SCOPE);
-    const collection = scope.collection(process.env.COUCHBASE_COLLECTION);
+    // cari user berdasarkan username
+    const users = await execute("SELECT id, username, password, role FROM users WHERE username = ?", [username]);
 
-    const query = `
-      SELECT META(u).id, u.username, u.password, u.role
-      FROM \`${process.env.COUCHBASE_BUCKET}\`.\`${process.env.COUCHBASE_SCOPE}\`.\`${process.env.COUCHBASE_COLLECTION}\` u
-      WHERE u.username = $username
-      LIMIT 1
-    `;
-
-    const result = await cluster.query(query, { parameters: { username } });
-
-    if (result.rows.length === 0) {
+    if (users.length === 0) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    const user = result.rows[0].u;
+    const user = users[0];
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
@@ -40,15 +29,13 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       message: "Login successful",
-      user: { id: result.rows[0].id, username: user.username, role: user.role },
+      user: { id: user.id, username: user.username, role: user.role },
     });
   } catch (error) {
     console.error("❌ Login error:", error);
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message,   // detail pesan error
-      stack: error.stack      // jejak error
+      error: error.message,
     });
   }
 }
-

@@ -1,29 +1,21 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { connectToCluster } from '../../lib/couchbase.js';
+import { execute } from "@/lib/db";
 
 export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    const { username, password } = req.body;
+  if (req.method !== "POST") return res.status(405).end();
 
-    const cluster = await connectToCluster();
-    const bucket = cluster.bucket(process.env.COUCHBASE_BUCKET);
-    const collection = bucket.defaultCollection();
+  const { username, password } = req.body;
 
-    try {
-      const result = await collection.get(`user::${username}`);
-      const user = result.value;
+  try {
+    const rows = await execute("SELECT * FROM users WHERE username = ?", [username]);
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
-      const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '1h' });
-      return res.status(200).json({ token });
-    } catch (error) {
-      return res.status(401).json({ error: 'User not found' });
+    if (rows.length === 0) {
+      return res.status(401).json({ message: "User not found" });
     }
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    // validasi password di sini
+    return res.status(200).json({ message: "Login successful", user: rows[0] });
+  } catch (err) {
+    console.error("Auth error:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 }

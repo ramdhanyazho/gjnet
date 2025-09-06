@@ -23,10 +23,8 @@ export default function LoginPage() {
       if (res.ok) {
         alert("Login success");
 
-        // simpan user ke localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
 
-        // redirect sesuai role
         const role = data.user.role;
         if (role === "admin" || role === "operator") {
           router.push("/dashboard");
@@ -42,33 +40,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="w-full max-w-md p-6 bg-white rounded shadow">
-        <h1 className="text-xl font-bold mb-4">Login</h1>
-        <form onSubmit={submit} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800">
+      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold text-center text-blue-700 mb-6">
+          Welcome to GJNET
+        </h1>
+        <form onSubmit={submit} className="space-y-5">
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="username"
-            className="w-full p-2 border rounded"
+            placeholder="Username"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="password"
-            className="w-full p-2 border rounded"
+            placeholder="Password"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          {error && <div className="text-red-500">{error}</div>}
-          <button className="w-full bg-blue-600 text-white p-2 rounded">
+          {error && <div className="text-red-500 text-sm">{error}</div>}
+          <button
+            type="submit"
+            className="w-full py-3 text-white font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-indigo-600 hover:to-purple-600 rounded-lg transition-all"
+          >
             Login
           </button>
         </form>
-        <div className="mt-4 text-sm">
-          Don't have an account?{" "}
-          <a href="/register" className="text-blue-600">
-            Register
-          </a>
+        <div className="mt-6 text-center text-xs text-gray-500">
+          © Ramdhanyazho 2025
         </div>
       </div>
     </div>

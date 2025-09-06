@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Buat tabel users kalau belum ada (pakai schema yang konsisten)
+    // Buat tabel users kalau belum ada
     await execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +26,9 @@ export default async function handler(req, res) {
     if (rows.length === 0) {
       const hashed = await bcrypt.hash("admin123", 10);
 
+      // 🔍 Debug log sebelum insert
+      console.log("DEBUG insert admin args:", ["admin", hashed, "admin"]);
+
       await execute(
         "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
         ["admin", hashed, "admin"]
@@ -39,6 +42,8 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error("Init admin error:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 }

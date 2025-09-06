@@ -13,8 +13,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // cari user berdasarkan username
-    const users = await execute("SELECT id, username, password, role FROM users WHERE username = ?", [username]);
+    const users = await execute(
+      "SELECT id, username, password, role FROM users WHERE username = ?",
+      [username]
+    );
+    console.log("DEBUG users query:", users);
 
     if (users.length === 0) {
       return res.status(401).json({ message: "User not found" });
@@ -22,6 +25,7 @@ export default async function handler(req, res) {
 
     const user = users[0];
     const match = await bcrypt.compare(password, user.password);
+    console.log("DEBUG bcrypt.compare:", match);
 
     if (!match) {
       return res.status(401).json({ message: "Invalid password" });
@@ -33,9 +37,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("❌ Login error:", error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 }

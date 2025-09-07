@@ -1,52 +1,42 @@
-import { useState } from "react";
-import { useRouter } from "next/router";
+import { execute } from "@/lib/db"; // PASTIKAN mengimpor 'execute'
+import bcrypt from "bcryptjs";
 
-export default function CustomerLogin() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const router = useRouter();
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).end();
+  }
 
-  const login = async (e) => {
-    e.preventDefault();
-    setMessage("");
+  const { email, password } = req.body;
 
-    const res = await fetch("/api/customers/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+  try {
+    // PASTIKAN memanggil 'execute'
+    const result = await execute(
+      `
+      SELECT * FROM customers WHERE email = $1
+    `,
+      [email]
+    );
+
+    const user = result[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Email atau password salah." });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ message: "Email atau password salah." });
+    }
+
+    // Jika berhasil, kirim data user (tanpa password)
+    res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: "customer",
     });
-
-    const data = await res.json();
-    if (!res.ok) return setMessage(data.message || "Login failed");
-
-    localStorage.setItem("user", JSON.stringify(data));
-    router.push("/customer-dashboard");
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={login} className="bg-white p-6 rounded shadow w-full max-w-sm">
-        <h1 className="text-xl font-bold mb-4">Customer Login</h1>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-4 p-2 border rounded"
-          required
-        />
-        <button className="w-full bg-blue-600 text-white p-2 rounded">Login</button>
-        {message && <p className="mt-2 text-red-600 text-sm">{message}</p>}
-      </form>
-    </div>
-  );
+  } catch (error) {
+    console.error("Login API error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server." });
+  }
 }

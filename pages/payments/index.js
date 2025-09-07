@@ -15,9 +15,9 @@ export default function PaymentsPage() {
   const [user, setUser] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState(null);
-  // State form disesuaikan dengan struktur baru
   const [form, setForm] = useState({
     customer_id: "",
+    name: "", // Tambahkan name untuk konsistensi
     address: "",
     phone: "",
     created_at: new Date(),
@@ -29,7 +29,6 @@ export default function PaymentsPage() {
 
   const router = useRouter();
 
-  // Mengambil data payments dan customers sekaligus
   const fetchData = async () => {
     try {
       const [paymentsRes, customersRes] = await Promise.all([
@@ -48,7 +47,6 @@ export default function PaymentsPage() {
     }
   };
   
-  // Efek untuk memfilter data saat 'payments' atau 'search' berubah
   useEffect(() => {
     setFiltered(
       payments.filter((p) =>
@@ -57,7 +55,6 @@ export default function PaymentsPage() {
     );
   }, [search, payments]);
 
-  // Efek untuk autentikasi dan pengambilan data awal
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem("user") || "null");
     if (!u || !['admin', 'operator'].includes(u.role)) {
@@ -72,12 +69,12 @@ export default function PaymentsPage() {
   const handleDateChange = (date) => setForm({ ...form, created_at: date });
 
   const openForm = (data = null) => {
-    if (data) { // Mode Edit
-      setForm({ ...data, created_at: new Date(data.created_at) });
+    if (data) {
+      setForm({ ...data, created_at: new Date(data.created_at), name: data.customer_name, phone: data.customer_phone });
       setEditId(data.id);
-    } else { // Mode Tambah Baru
+    } else {
       setForm({
-        customer_id: "", address: "", phone: "", created_at: new Date(),
+        customer_id: "", name: "", address: "", phone: "", created_at: new Date(),
         package: "", status: "aktif", first_payment: "", fee: "",
       });
       setEditId(null);
@@ -94,14 +91,15 @@ export default function PaymentsPage() {
       if (!form.customer_id) return alert("Silakan pilih customer.");
       const selectedCustomer = customers.find(c => c.id == form.customer_id);
       if (selectedCustomer) {
-        payload.phone = selectedCustomer.phone; // Ambil no HP dari customer terpilih
+        // PENTING: Tambahkan nama dan phone dari customer yang dipilih ke payload
+        payload.name = selectedCustomer.name;
+        payload.phone = selectedCustomer.phone;
       }
     }
     
-    // Hapus properti yang tidak ada di tabel 'payments'
+    // Hapus properti yang TIDAK ADA di tabel 'payments'
     delete payload.customer_name; 
     delete payload.customer_phone;
-    delete payload.name;
 
     const url = editId ? `/api/payments/${editId}` : "/api/payments";
     const method = editId ? "PUT" : "POST";
@@ -123,9 +121,9 @@ export default function PaymentsPage() {
   const exportExcel = () => {
     const dataToExport = filtered.slice(0, rowLimit).map(p => ({
         ID: p.id,
-        Nama: p.customer_name,
+        Nama: p.customer_name, // Menggunakan customer_name dari join
         Alamat: p.address,
-        HP: p.customer_phone,
+        HP: p.customer_phone, // Menggunakan customer_phone dari join
         Tanggal: new Date(p.created_at).toLocaleDateString('id-ID'),
         Paket: p.package,
         Status: p.status,

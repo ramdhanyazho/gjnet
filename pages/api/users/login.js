@@ -15,7 +15,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // DIUBAH: Menggunakan placeholder $1, bukan ?
     const rows = await execute(
       "SELECT id, username, password, role FROM users WHERE username = $1",
       [username]
@@ -30,18 +29,17 @@ export default async function handler(req, res) {
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET, // <-- SET di .env / Vercel
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // Set cookie httpOnly agar bisa dibaca API routes
     const cookie = [
       `token=${token}`,
       "HttpOnly",
       "Path=/",
       "SameSite=Lax",
-      isProd ? "Secure" : "", // Secure hanya di HTTPS
-      `Max-Age=${60 * 60 * 24 * 7}`, // 7 hari
+      isProd ? "Secure" : "",
+      `Max-Age=${60 * 60 * 24 * 7}`,
     ].filter(Boolean).join("; ");
 
     res.setHeader("Set-Cookie", cookie);

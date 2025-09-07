@@ -14,19 +14,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Gunakan placeholder ? untuk SQLite/Turso
+    // Gunakan placeholder ? (SQLite/Turso)
     const rows = await execute(
       "SELECT id, name, email, password FROM customers WHERE email = ?",
       [email]
     );
 
-    // Ambil baris pertama
+    // Ambil baris pertama dengan optional chaining array
     const user = rows?.;
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Bandingkan plain password vs hash di DB
+    // Bandingkan plain password vs hash tersimpan
     const ok = await bcrypt.compare(password, user.password || "");
     if (!ok) {
       return res.status(401).json({ message: "Email atau password salah." });

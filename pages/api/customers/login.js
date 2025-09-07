@@ -1,3 +1,4 @@
+// pages/api/customers/login.js
 import { execute } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
@@ -7,32 +8,32 @@ export default async function handler(req, res) {
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ message: "email dan password wajib" });
+  }
 
   try {
-    // Menggunakan 'execute' dan placeholder $1 yang benar untuk Turso/libsql
-    const result = await execute(
-      `
-      SELECT * FROM customers WHERE email = $1
-    `,
+    // Gunakan placeholder ? untuk SQLite/Turso
+    const rows = await execute(
+      "SELECT id, name, email, password FROM customers WHERE email = ?",
       [email]
     );
 
-    const user = result[0];
-
-    // Jika user tidak ditemukan
+    // Ambil baris pertama
+    const user = rows?.;
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Membandingkan password yang diinput dengan hash di database
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch) {
+    // Bandingkan plain password vs hash di DB
+    const ok = await bcrypt.compare(password, user.password || "");
+    if (!ok) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Jika berhasil, kirim data user (tanpa password)
-    res.status(200).json({
+    // Kembalikan data minimal tanpa password
+    return res.status(200).json({
       id: user.id,
       name: user.name,
       email: user.email,
@@ -40,7 +41,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Login API Error:", error);
-    res.status(500).json({ message: "Terjadi kesalahan pada server." });
+    return res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 }
-

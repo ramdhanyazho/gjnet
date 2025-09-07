@@ -1,4 +1,4 @@
-import { execute } from "@/lib/db"; // DIUBAH: Mengimpor 'execute'
+import { execute } from "@/lib/db"; // PASTIKAN mengimpor 'execute'
 import bcrypt from "bcryptjs";
 
 export default async function handler(req, res) {
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const { email, password } = req.body;
 
   try {
-    // DIUBAH: Menggunakan 'execute' dan placeholder $1
+    // PASTIKAN memanggil 'execute' dan menggunakan placeholder $1
     const result = await execute(
       `
       SELECT * FROM customers WHERE email = $1
@@ -20,13 +20,11 @@ export default async function handler(req, res) {
     const user = result[0];
 
     if (!user) {
-      // Pesan error yang lebih aman
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      // Pesan error yang lebih aman
       return res.status(401).json({ message: "Email atau password salah." });
     }
 

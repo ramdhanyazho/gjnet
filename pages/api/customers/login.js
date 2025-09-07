@@ -18,7 +18,9 @@ export default async function handler(req, res) {
       "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = ?",
       [email]
     );
-    const user = rows?.; // perbaiki optional chaining array
+
+    // Perbaikan di sini
+    const user = rows?.; // atau rows
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }

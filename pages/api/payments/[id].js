@@ -6,29 +6,35 @@ export default async function handler(req, res) {
   try {
     // --- MENGEDIT DATA PEMBAYARAN ---
     if (req.method === "PUT") {
-      const { name, address, phone, created_at, package: pkg, status, first_payment, fee } = req.body;
+      // Saat mengedit, kita tidak mengubah 'name' atau 'phone' di tabel payments.
+      // Kita hanya mengubah data yang relevan dengan tabel 'payments'.
+      const { address, created_at, package: pkg, status, first_payment, fee } = req.body;
+      
+      if (!pkg || !fee) {
+        return res.status(400).json({ message: "Paket dan Biaya wajib diisi" });
+      }
 
-      // DISESUAIKAN: Menggunakan placeholder $1, $2, dst.
       await execute(
-        `UPDATE payments 
-         SET name=$1, address=$2, phone=$3, created_at=$4, package=$5, status=$6, first_payment=$7, fee=$8 
-         WHERE id=$9`,
-        [name, address, phone, created_at, pkg, status, first_payment, fee, id]
+        `UPDATE payments SET 
+         address = $1, created_at = $2, package = $3, status = $4, first_payment = $5, fee = $6 
+         WHERE id = $7`,
+        [address, created_at, pkg, status, first_payment, fee, id]
       );
-
-      return res.status(200).json({ message: "✅ Payment updated" });
+      return res.status(200).json({ message: "✅ Payment record updated" });
     }
 
     // --- MENGHAPUS DATA PEMBAYARAN ---
     if (req.method === "DELETE") {
-      // DISESUAIKAN: Menggunakan placeholder $1
       await execute("DELETE FROM payments WHERE id = $1", [id]);
-      return res.status(200).json({ message: "🗑️ Payment deleted" });
+      return res.status(200).json({ message: "✅ Payment record deleted" });
     }
 
+    // Jika method tidak diizinkan
+    res.setHeader("Allow", ["PUT", "DELETE"]);
     return res.status(405).json({ message: "Method not allowed" });
+
   } catch (error) {
-    console.error("Payments API error:", error);
+    console.error(`Payments API error for ID ${id}:`, error);
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 }

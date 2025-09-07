@@ -6,6 +6,13 @@ import "jspdf-autotable";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+// Helper component untuk memberikan warna pada status
+const StatusBadge = ({ status }) => {
+    const base = "px-2 py-1 text-xs font-semibold rounded-full capitalize";
+    const colors = status === 'aktif' ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800";
+    return <span className={`${base} ${colors}`}>{status || 'N/A'}</span>;
+};
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -15,9 +22,10 @@ export default function PaymentsPage() {
   const [user, setUser] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState(null);
+  // State form disesuaikan dengan struktur baru
   const [form, setForm] = useState({
     customer_id: "",
-    name: "", // Tambahkan name untuk konsistensi
+    name: "", // Digunakan untuk tampilan di form edit
     address: "",
     phone: "",
     created_at: new Date(),
@@ -29,6 +37,7 @@ export default function PaymentsPage() {
 
   const router = useRouter();
 
+  // Mengambil data payments dan customers sekaligus
   const fetchData = async () => {
     try {
       const [paymentsRes, customersRes] = await Promise.all([
@@ -47,6 +56,7 @@ export default function PaymentsPage() {
     }
   };
   
+  // Efek untuk memfilter data saat 'payments' atau 'search' berubah
   useEffect(() => {
     setFiltered(
       payments.filter((p) =>
@@ -55,6 +65,7 @@ export default function PaymentsPage() {
     );
   }, [search, payments]);
 
+  // Efek untuk autentikasi dan pengambilan data awal
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem("user") || "null");
     if (!u || !['admin', 'operator'].includes(u.role)) {
@@ -69,10 +80,11 @@ export default function PaymentsPage() {
   const handleDateChange = (date) => setForm({ ...form, created_at: date });
 
   const openForm = (data = null) => {
-    if (data) {
-      setForm({ ...data, created_at: new Date(data.created_at), name: data.customer_name, phone: data.customer_phone });
+    if (data) { // Mode Edit
+      // Mengisi form dengan data yang ada, termasuk nama customer untuk ditampilkan
+      setForm({ ...data, name: data.customer_name, phone: data.customer_phone, created_at: new Date(data.created_at) });
       setEditId(data.id);
-    } else {
+    } else { // Mode Tambah Baru
       setForm({
         customer_id: "", name: "", address: "", phone: "", created_at: new Date(),
         package: "", status: "aktif", first_payment: "", fee: "",
@@ -91,13 +103,13 @@ export default function PaymentsPage() {
       if (!form.customer_id) return alert("Silakan pilih customer.");
       const selectedCustomer = customers.find(c => c.id == form.customer_id);
       if (selectedCustomer) {
-        // PENTING: Tambahkan nama dan phone dari customer yang dipilih ke payload
+        // Menambahkan nama dan phone ke payload untuk disimpan di tabel payments
         payload.name = selectedCustomer.name;
         payload.phone = selectedCustomer.phone;
       }
     }
     
-    // Hapus properti yang TIDAK ADA di tabel 'payments'
+    // Hapus properti yang tidak relevan/tidak ada di tabel 'payments'
     delete payload.customer_name; 
     delete payload.customer_phone;
 
@@ -121,9 +133,9 @@ export default function PaymentsPage() {
   const exportExcel = () => {
     const dataToExport = filtered.slice(0, rowLimit).map(p => ({
         ID: p.id,
-        Nama: p.customer_name, // Menggunakan customer_name dari join
+        Nama: p.customer_name,
         Alamat: p.address,
-        HP: p.customer_phone, // Menggunakan customer_phone dari join
+        HP: p.customer_phone,
         Tanggal: new Date(p.created_at).toLocaleDateString('id-ID'),
         Paket: p.package,
         Status: p.status,
@@ -187,7 +199,7 @@ export default function PaymentsPage() {
                   <td className="border px-3 py-1">{p.customer_phone}</td>
                   <td className="border px-3 py-1">{new Date(p.created_at).toLocaleDateString('id-ID')}</td>
                   <td className="border px-3 py-1">{p.package}</td>
-                  <td className="border px-3 py-1">{p.status}</td>
+                  <td className="border px-3 py-1"><StatusBadge status={p.status}/></td>
                   <td className="border px-3 py-1">{p.first_payment}</td>
                   <td className="border px-3 py-1">{p.fee}</td>
                   {user?.role !== "readonly" && (

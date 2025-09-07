@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Gunakan placeholder ? (SQLite/Turso)
+    // Gunakan placeholder ? (kompatibel SQLite/Turso)
     const rows = await execute(
       "SELECT id, name, email, password FROM customers WHERE email = ?",
       [email]

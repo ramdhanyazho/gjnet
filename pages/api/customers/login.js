@@ -1,4 +1,5 @@
-import { query } from "@/lib/db"; // sesuaikan dengan koneksi DB kamu
+// DIUBAH: Mengimpor 'execute' bukan 'query'
+import { execute } from "@/lib/db"; 
 import bcrypt from "bcryptjs";
 
 export default async function handler(req, res) {
@@ -6,7 +7,8 @@ export default async function handler(req, res) {
 
   const { email, password } = req.body;
 
-  const result = await query(`
+  // DIUBAH: Memanggil fungsi 'execute' bukan 'query'
+  const result = await execute(`
     SELECT * FROM customers WHERE email = $1
   `, [email]);
 

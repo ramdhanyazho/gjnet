@@ -15,8 +15,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    // DIUBAH: Menggunakan placeholder $1, bukan ?
     const rows = await execute(
-      "SELECT id, username, password, role FROM users WHERE username = ?",
+      "SELECT id, username, password, role FROM users WHERE username = $1",
       [username]
     );
     if (rows.length === 0) {
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,                         // <-- SET di .env / Vercel
+      process.env.JWT_SECRET, // <-- SET di .env / Vercel
       { expiresIn: "7d" }
     );
 
@@ -39,8 +40,8 @@ export default async function handler(req, res) {
       "HttpOnly",
       "Path=/",
       "SameSite=Lax",
-      isProd ? "Secure" : "",                        // Secure hanya di HTTPS
-      `Max-Age=${60 * 60 * 24 * 7}`,                 // 7 hari
+      isProd ? "Secure" : "", // Secure hanya di HTTPS
+      `Max-Age=${60 * 60 * 24 * 7}`, // 7 hari
     ].filter(Boolean).join("; ");
 
     res.setHeader("Set-Cookie", cookie);
@@ -54,3 +55,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 }
+

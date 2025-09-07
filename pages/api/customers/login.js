@@ -14,13 +14,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // SQLite/Turso: gunakan placeholder ? (qmark style)
     const rows = await execute(
       "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = ?",
       [email]
     );
 
-    // Perbaikan di sini
-    const user = rows?.; // atau rows
+    // Ambil baris pertama (PERBAIKAN)
+    const user = rows?.; // hindari 'rows?.;' karena itu Syntax Error
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
+    // Kembalikan data minimal tanpa password
     return res.status(200).json({
       id: user.id,
       name: user.name,

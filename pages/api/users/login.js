@@ -15,6 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // BENAR: Query ke tabel 'users' berdasarkan 'username'
     const rows = await execute(
       "SELECT id, username, password, role FROM users WHERE username = $1",
       [username]
@@ -25,7 +26,9 @@ export default async function handler(req, res) {
 
     const user = rows[0];
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ message: "Invalid password" });
+    if (!ok) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },

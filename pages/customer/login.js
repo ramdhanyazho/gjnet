@@ -1,70 +1,46 @@
-// pages/customer/login.js
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+// pages/api/customers/login.js
+import { execute } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
-export default function CustomerLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", ["POST"]);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
 
-  // Opsional: jika sudah login sebagai customer, langsung redirect
-  useEffect(() => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u?.role === "customer") router.replace("/customer/dashboard");
-      }
-    } catch {}
-  }, [router]);
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ message: "email dan password wajib" });
+  }
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr("");
-    try {
-      const res = await fetch("/api/customers/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErr(data?.message || "Login gagal");
-        return;
-      }
-      localStorage.setItem("user", JSON.stringify(data));
-      router.replace("/customer/dashboard");
-    } catch (e) {
-      setErr("Server error");
+  try {
+    // Gunakan placeholder ? (qmark style) untuk SQLite/Turso
+    const rows = await execute(
+      "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = ?",
+      [email]
+    );
+
+    // Ambil baris pertama dengan optional chaining array (PERBAIKAN)
+    const user = rows?.; // jangan tulis rows?.; karena itu Syntax Error
+    if (!user) {
+      return res.status(401).json({ message: "Email atau password salah." });
     }
-  };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold text-blue-700 mb-4">Login Customer</h1>
-        <form onSubmit={submit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e)=>setEmail(e.target.value)}
-            className="w-full p-3 border rounded"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e)=>setPassword(e.target.value)}
-            className="w-full p-3 border rounded"
-            required
-          />
-          {err && <div className="text-red-600 text-sm">{err}</div>}
-          <button className="w-full bg-blue-600 text-white py-2 rounded">Masuk</button>
-        </form>
-      </div>
-    </div>
-  );
+    // Bandingkan plain password vs hash tersimpan
+    const ok = await bcrypt.compare(password, user.password || "");
+    if (!ok) {
+      return res.status(401).json({ message: "Email atau password salah." });
+    }
+
+    // Kembalikan data minimal tanpa password
+    return res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: "customer",
+    });
+  } catch (error) {
+    console.error("Login API Error:", error);
+    return res.status(500).json({ message: "Terjadi kesalahan pada server." });
+  }
 }

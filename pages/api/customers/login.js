@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Gunakan placeholder ? (kompatibel SQLite/Turso)
+    // Placeholder ? untuk SQLite/Turso
     const rows = await execute(
       "SELECT id, name, email, password FROM customers WHERE email = ?",
       [email]
@@ -26,13 +26,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Bandingkan plain password vs hash tersimpan
+    // Bandingkan password plain vs hash
     const ok = await bcrypt.compare(password, user.password || "");
     if (!ok) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Kembalikan data minimal tanpa password
     return res.status(200).json({
       id: user.id,
       name: user.name,

@@ -1,32 +1,52 @@
-// pages/api/customers/login.js
-import { execute } from "@/lib/db"; // sebelumnya: import { query } from "@/lib/db"
+import { useState } from "react";
+import { useRouter } from "next/router";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
-  try {
-    const { email, password } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ message: "email dan password wajib" });
-    }
+export default function CustomerLogin() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const router = useRouter();
 
-    // gunakan execute (wrapper ke client.execute)
-    const rows = await execute(
-      "SELECT id, email, password_hash FROM customers WHERE email = ?",
-      [email]
-    );
+  const login = async (e) => {
+    e.preventDefault();
+    setMessage("");
 
-    const row = rows?.;
-    if (!row) return res.status(401).json({ message: "Kredensial salah" });
+    const res = await fetch("/api/customers/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    // TODO: ganti ke bcrypt.compare untuk hash
-    const ok = password === row.password_hash; // placeholder
-    if (!ok) return res.status(401).json({ message: "Kredensial salah" });
+    const data = await res.json();
+    if (!res.ok) return setMessage(data.message || "Login failed");
 
-    return res.status(200).json({ id: row.id, email: row.email });
-  } catch (e) {
-    return res.status(500).json({ message: e?.message || "Server error" });
-  }
+    localStorage.setItem("user", JSON.stringify(data));
+    router.push("/customer-dashboard");
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <form onSubmit={login} className="bg-white p-6 rounded shadow w-full max-w-sm">
+        <h1 className="text-xl font-bold mb-4">Customer Login</h1>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full mb-2 p-2 border rounded"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-4 p-2 border rounded"
+          required
+        />
+        <button className="w-full bg-blue-600 text-white p-2 rounded">Login</button>
+        {message && <p className="mt-2 text-red-600 text-sm">{message}</p>}
+      </form>
+    </div>
+  );
 }

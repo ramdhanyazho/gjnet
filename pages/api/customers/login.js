@@ -1,4 +1,3 @@
-// pages/api/customers/login.js
 import { execute } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
@@ -14,20 +13,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // SQLite/Turso: gunakan placeholder ? (qmark style)
-    const rows = await execute(
-      "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = ?",
+    // PERBAIKAN 1: Menggunakan placeholder '$1' yang benar
+    const result = await execute(
+      "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = $1",
       [email]
     );
 
-    // Ambil baris pertama (PERBAIKAN)
-    const user = rows?.; // atau rows
+    // PERBAIKAN 2: Mengambil baris pertama dari hasil query dengan cara yang benar
+    const user = result[0];
+    
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    const ok = await bcrypt.compare(password, user.password || "");
-    if (!ok) {
+    const isPasswordMatch = await bcrypt.compare(password, user.password || "");
+    if (!isPasswordMatch) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
@@ -42,3 +42,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 }
+

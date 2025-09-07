@@ -7,10 +7,13 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [user, setUser] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
+  
+  // DIUBAH: Menambahkan field password ke state form
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
+    password: "", 
   });
   const [editId, setEditId] = useState(null);
   const router = useRouter();
@@ -53,10 +56,12 @@ export default function CustomersPage() {
 
   const openForm = (data = null) => {
     if (data) {
-      setForm(data);
+      // Saat edit, tidak perlu set password
+      setForm({ name: data.name, email: data.email, phone: data.phone, password: "" });
       setEditId(data.id);
     } else {
-      setForm({ name: "", email: "", phone: "" });
+      // DIUBAH: Reset form dengan field password saat tambah baru
+      setForm({ name: "", email: "", phone: "", password: "" });
       setEditId(null);
     }
     setFormOpen(true);
@@ -64,12 +69,15 @@ export default function CustomersPage() {
 
   const handleSubmit = async () => {
     if (editId) {
+      // Saat edit, kita tidak mengirim password
+      const { password, ...editData } = form;
       await fetch(`/api/customers/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(editData),
       });
     } else {
+      // Saat tambah baru, kita mengirim semua data form termasuk password
       await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,7 +144,7 @@ export default function CustomersPage() {
                   <td className="p-3 border">{c.name}</td>
                   <td className="p-3 border">{c.email}</td>
                   <td className="p-3 border">{c.phone}</td>
-                  <td className="p-3 border">{c.created_at}</td>
+                  <td className="p-3 border">{new Date(c.created_at).toLocaleString()}</td>
                   {user?.role === "admin" && (
                     <td className="p-3 border space-x-2">
                       <button
@@ -170,12 +178,23 @@ export default function CustomersPage() {
                 <input
                   key={key}
                   name={key}
-                  placeholder={key.toUpperCase()}
+                  placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
                   value={form[key] || ""}
                   onChange={handleChange}
                   className="w-full border px-3 py-2 rounded mb-2"
                 />
               ))}
+              {/* BARU: Input password hanya muncul saat tambah customer baru (!editId) */}
+              {!editId && (
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={handleChange}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
+              )}
               <div className="flex justify-end space-x-2">
                 <button
                   onClick={() => setFormOpen(false)}

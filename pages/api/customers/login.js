@@ -14,19 +14,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Placeholder ? untuk SQLite/Turso
     const rows = await execute(
-      "SELECT id, name, email, password FROM customers WHERE email = ?",
+      "SELECT id, name, email, phone, password, created_at FROM customers WHERE email = ?",
       [email]
     );
-
-    // Ambil baris pertama dengan optional chaining array
-    const user = rows?.;
+    const user = rows?.; // perbaiki optional chaining array
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah." });
     }
 
-    // Bandingkan password plain vs hash
     const ok = await bcrypt.compare(password, user.password || "");
     if (!ok) {
       return res.status(401).json({ message: "Email atau password salah." });

@@ -1,50 +1,57 @@
 import { execute } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export default async function handler(req, res) {
-  try {
-    // --- MENGAMBIL SEMUA DATA PEMBAYARAN ---
-    if (req.method === "GET") {
-      // Query ini mengambil data dari tabel payments dan menggabungkannya dengan data customer
-      const payments = await execute(`
-        SELECT 
-          p.id, p.package, p.status, p.first_payment, p.fee, p.created_at, p.address,
-          c.id as customer_id,
-          c.name as customer_name,
-          c.phone as customer_phone
-        FROM payments p
-        LEFT JOIN customers c ON p.customer_id = c.id
-        ORDER BY p.id DESC
-      `);
-      return res.status(200).json(payments);
+  // --- MENGAMBIL DAFTAR SEMUA CUSTOMER ---
+  if (req.method === "GET") {
+    try {
+      // Mengambil data customer tanpa password demi keamanan
+      const customers = await execute("SELECT id, name, email, phone, created_at FROM customers ORDER BY id DESC", []);
+      res.status(200).json(customers);
+    } catch (error) {
+      console.error("API GET CUSTOMERS ERROR:", error);
+      res.status(500).json({ message: "Gagal mengambil data customer", error });
+    }
+  } 
+  
+  // --- MEMBUAT CUSTOMER BARU ---
+  else if (req.method === "POST") {
+    const { name, email, phone, password } = req.body;
+
+    // Validasi input dasar
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Nama, email, dan password diperlukan" });
     }
 
-    // --- MEMBUAT DATA PEMBAYARAN BARU ---
-    if (req.method === "POST") {
-      // PERBAIKAN: Sekarang kita juga menerima 'name' dan 'phone' dari req.body
-      const { customer_id, name, address, phone, created_at, package: pkg, status, first_payment, fee } = req.body;
+    try {
+      // Enkripsi password sebelum disimpan
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      if (!customer_id || !name || !pkg || !fee) {
-          return res.status(400).json({ message: "Customer, Nama, Paket, dan Biaya wajib diisi" });
-      }
-
-      // PERBAIKAN: Query INSERT sekarang menyertakan 'name' dan 'phone' agar sesuai dengan tabel Anda
-      await execute(
-        `INSERT INTO payments 
-         (customer_id, name, address, phone, created_at, package, status, first_payment, fee) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [customer_id, name, address, phone, created_at, pkg, status, first_payment, fee]
+      // PERBAIKAN: Menggunakan placeholder $1, $2, dst.
+      const result = await execute(
+        `
+        INSERT INTO customers (name, email, phone, password, created_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        RETURNING id
+      `,
+        [name, email, phone, hashedPassword]
       );
-
-      return res.status(201).json({ message: "Payment record created" });
+      
+      res.status(201).json({ message: "Customer berhasil dibuat", customerId: result[0].id });
+    } catch (error) {
+      // Handle kemungkinan email duplikat
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        return res.status(409).json({ message: "Email sudah terdaftar." });
+      }
+      console.error("API CREATE CUSTOMER ERROR:", error);
+      res.status(500).json({ message: "Error saat membuat customer", error });
     }
-
-    // Jika method tidak diizinkan
+  } 
+  
+  // --- JIKA METHOD TIDAK DIDUKUNG ---
+  else {
     res.setHeader("Allow", ["GET", "POST"]);
-    return res.status(405).json({ message: "Method not allowed" });
-
-  } catch (error) {
-    console.error("Payments API error:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
 

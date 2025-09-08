@@ -25,7 +25,7 @@ export default function PaymentsPage() {
   // State form disesuaikan dengan struktur baru
   const [form, setForm] = useState({
     customer_id: "",
-    name: "", // Digunakan untuk tampilan di form edit
+    name: "", // Digunakan untuk duplikasi data & tampilan di form edit
     address: "",
     phone: "",
     created_at: new Date(),
@@ -81,7 +81,6 @@ export default function PaymentsPage() {
 
   const openForm = (data = null) => {
     if (data) { // Mode Edit
-      // Mengisi form dengan data yang ada, termasuk nama customer untuk ditampilkan
       setForm({ ...data, name: data.customer_name, phone: data.customer_phone, created_at: new Date(data.created_at) });
       setEditId(data.id);
     } else { // Mode Tambah Baru
@@ -109,7 +108,7 @@ export default function PaymentsPage() {
       }
     }
     
-    // Hapus properti yang tidak relevan/tidak ada di tabel 'payments'
+    // Hapus properti yang tidak ada di tabel 'payments' (yang hanya hasil JOIN)
     delete payload.customer_name; 
     delete payload.customer_phone;
 
